@@ -8,19 +8,31 @@
     #include "wifi_config.h"
 #endif
 
-// Configuration selection
-#define USE_TMC2209_NEMA11
+// Define pin configurations for each motor setup
+const TMC2209PinConfig NEMA11_PINS(
+    4,  // stepPin
+    2,  // dirPin
+    5,  // enablePin
+    17,  // ms1Pin
+    16   // ms2Pin
+);
 
-#ifdef USE_TMC2209_NEMA11
-    StepperDriver driver(NEMA11_CONFIG, TMC2209_PINS, true);
-#else
-    StepperDriver driver(BYUJ28_CONFIG, ULN2003_PINS, false);
-#endif
+const ULN2003PinConfig BYJ48_PINS(
+    33,  // IN1
+    32,  // IN2
+    35,  // IN3
+    34  // IN4
+
+);
+
+// Create stepper driver instances with explicit pin configurations
+StepperDriver nema11Driver(NEMA11_CONFIG, NEMA11_PINS, true);   // TMC2209 + NEMA11
+StepperDriver byjDriver(BYUJ28_CONFIG, BYJ48_PINS, false);      // ULN2003 + 28BYJ-48
 
 void setup() {
     Serial.begin(SERIAL_BAUD);
     
-    Serial.println("\n=== Stepper Motor Comparison Test ===");
+    Serial.println("\n=== Dual Stepper Motor Comparison Test ===");
     Serial.print("Board: ");
     Serial.println(BOARD_NAME);
     
@@ -32,15 +44,21 @@ void setup() {
         }
     #endif
 
-    #ifdef USE_TMC2209_NEMA11
-        Serial.println("Configuration: NEMA 11 with TMC2209");
-    #else
-        Serial.println("Configuration: 28BYJ-48 with ULN2003");
-    #endif
+    // Initialize motors
+    Serial.println("\nInitializing NEMA11 with TMC2209");
+    Serial.printf("Pins - Step:%d, Dir:%d, Enable:%d, MS1:%d, MS2:%d\n",
+        NEMA11_PINS.stepPin, NEMA11_PINS.dirPin, NEMA11_PINS.enablePin,
+        NEMA11_PINS.ms1Pin, NEMA11_PINS.ms2Pin);
+    nema11Driver.setup();
     
-    driver.setup();
-    Serial.println("Setup complete - Starting oscillation test");
-    Serial.println("========================================");
+    Serial.println("\nInitializing 28BYJ-48 with ULN2003");
+    Serial.printf("Pins - Step:%d, Dir:%d, Enable:%d, MS1:%d, MS2:%d\n",
+        BYJ48_PINS.stepPin, BYJ48_PINS.dirPin, BYJ48_PINS.enablePin,
+        BYJ48_PINS.ms1Pin, BYJ48_PINS.ms2Pin);
+    byjDriver.setup();
+    
+    Serial.println("\nSetup complete - Starting oscillation test");
+    Serial.println("==========================================");
 }
 
 void loop() {
@@ -48,5 +66,7 @@ void loop() {
         WifiManager::handle();  // Handle OTA updates
     #endif
     
-    driver.runOscillation();
+    // Run both motors
+    nema11Driver.runOscillation();
+    byjDriver.runOscillation();
 }
