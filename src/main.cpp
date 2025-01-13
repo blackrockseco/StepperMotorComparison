@@ -4,39 +4,49 @@
 #include "motor_config.h"
 #include "stepper_driver.h"
 
-// Configuration selection - Comment/uncomment to switch setups
-#define USE_TMC2209_NEMA11  // Comment this line to use ULN2003 + 28BYJ-48
+#if defined(ESP32)
+    #include "wifi_config.h"
+#endif
 
-// Create the appropriate driver instance based on configuration
+// Configuration selection
+#define USE_TMC2209_NEMA11
+
 #ifdef USE_TMC2209_NEMA11
-   StepperDriver driver(NEMA11_CONFIG, TMC2209_PINS, true);
+    StepperDriver driver(NEMA11_CONFIG, TMC2209_PINS, true);
 #else
-   StepperDriver driver(BYUJ28_CONFIG, ULN2003_PINS, false);
+    StepperDriver driver(BYUJ28_CONFIG, ULN2003_PINS, false);
 #endif
 
 void setup() {
-   // Initialize serial communication
-   Serial.begin(SERIAL_BAUD);
-   
-   // Print startup information
-   Serial.println("\n=== Stepper Motor Comparison Test ===");
-   Serial.print("Board: ");
-   Serial.println(BOARD_NAME);
-   
-   #ifdef USE_TMC2209_NEMA11
-       Serial.println("Configuration: NEMA 11 with TMC2209");
-   #else
-       Serial.println("Configuration: 28BYJ-48 with ULN2003");
-   #endif
-   
-   // Initialize the stepper driver
-   driver.setup();
-   
-   Serial.println("Setup complete - Starting oscillation test");
-   Serial.println("========================================");
+    Serial.begin(SERIAL_BAUD);
+    
+    Serial.println("\n=== Stepper Motor Comparison Test ===");
+    Serial.print("Board: ");
+    Serial.println(BOARD_NAME);
+    
+    #if defined(ESP32)
+        if (WifiManager::setupWiFiAndOTA()) {
+            Serial.println("WiFi and OTA setup successful");
+        } else {
+            Serial.println("WiFi setup failed, continuing without OTA");
+        }
+    #endif
+
+    #ifdef USE_TMC2209_NEMA11
+        Serial.println("Configuration: NEMA 11 with TMC2209");
+    #else
+        Serial.println("Configuration: 28BYJ-48 with ULN2003");
+    #endif
+    
+    driver.setup();
+    Serial.println("Setup complete - Starting oscillation test");
+    Serial.println("========================================");
 }
 
 void loop() {
-   // Execute the oscillating motion
-   driver.runOscillation();
+    #if defined(ESP32)
+        WifiManager::handle();  // Handle OTA updates
+    #endif
+    
+    driver.runOscillation();
 }
