@@ -53,12 +53,11 @@ void StepperDriver::setupTMC2209() {
     pinMode(tmcPinConfig.ms2Pin, OUTPUT);
     digitalWrite(tmcPinConfig.ms1Pin, HIGH);  // 16x microstepping
     digitalWrite(tmcPinConfig.ms2Pin, HIGH);
-    Serial.println("TMC2209 driver configured.");
 }
 
 void StepperDriver::setupULN2003() {
+    // No special enable pins for ULN2003—AccelStepper handles step sequences
     Serial.println("ULN2003 driver configured.");
-    // No special enable pins for ULN2003—AccelStepper handles step sequences.
 }
 
 void StepperDriver::configureDriver() {
