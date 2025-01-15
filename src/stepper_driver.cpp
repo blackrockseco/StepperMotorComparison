@@ -2,93 +2,87 @@
 #include "stepper_driver.h"
 #include <Arduino.h>
 
-StepperDriver::StepperDriver(const MotorConfig& config, const PinConfig& pins, bool isTMC2209) 
-   : motorConfig(config)
-   , pinConfig(pins)
-   , isTMC2209Driver(isTMC2209)
-   , movingClockwise(true) {
-   
-   if (isTMC2209Driver) {
-       stepper = new AccelStepper(AccelStepper::DRIVER, pinConfig.stepPin, pinConfig.dirPin);
-   } else {
-       // For ULN2003, using 4-wire stepper configuration
-       stepper = new AccelStepper(AccelStepper::FULL4WIRE, 
-           pinConfig.stepPin, pinConfig.dirPin, 
-           pinConfig.enablePin, pinConfig.ms1Pin);
-   }
-   calculateSteps();
-}
-
-void StepperDriver::calculateSteps() {
-   float halfSwingDeg = motorConfig.totalSwingDeg / 2.0;
-   stepsForHalfSwing = (motorConfig.stepsPerRev * motorConfig.microstepping * (halfSwingDeg / 360.0));
-   
-   Serial.print("Calculated steps for half swing: ");
-   Serial.println(stepsForHalfSwing);
-}
-
 void StepperDriver::setup() {
-   Serial.print("Setting up ");
-   Serial.println(isTMC2209Driver ? "TMC2209 driver" : "ULN2003 driver");
-
-   if (isTMC2209Driver) {
-       setupTMC2209();
-   } else {
-       setupULN2003();
-   }
-   
-   configureDriver();
-   
-   Serial.println("Driver setup complete");
+    if (isTMC2209Driver) {
+        stepper = new AccelStepper(AccelStepper::DRIVER, tmcPinConfig.stepPin, tmcPinConfig.dirPin);
+        setupTMC2209();
+    } else {
+        stepper = new AccelStepper(AccelStepper::FULL4WIRE, ulnPinConfig.in1Pin, ulnPinConfig.in3Pin, ulnPinConfig.in2Pin, ulnPinConfig.in4Pin);
+        setupULN2003();
+    }
+    calculateSteps();
+    stepper->setMaxSpeed(isTMC2209Driver ? DEFAULT_MAX_SPEED_NEMA : DEFAULT_MAX_SPEED_BYJ);
+    stepper->setAcceleration(isTMC2209Driver ? DEFAULT_ACCELERATION_NEMA : DEFAULT_ACCELERATION_BYJ);
+    stepper->setCurrentPosition(0);
+    Serial.println(isTMC2209Driver ? \"TMC2209 motor initialized\" : \"ULN2003 motor initialized\");
 }
 
-void StepperDriver::setupTMC2209() {
-   pinMode(pinConfig.enablePin, OUTPUT);
-   pinMode(pinConfig.ms1Pin, OUTPUT);
-   pinMode(pinConfig.ms2Pin, OUTPUT);
-   
-   digitalWrite(pinConfig.enablePin, LOW);    // Enable driver (active low)
-   digitalWrite(pinConfig.ms1Pin, HIGH);      // Set 16x microstepping
-   digitalWrite(pinConfig.ms2Pin, HIGH);      // Set 16x microstepping
-}
 
-void StepperDriver::setupULN2003() {
-   // ULN2003 doesn't require special setup
-   // Pins are configured by AccelStepper constructor
-}
-
-void StepperDriver::configureDriver() {
-   stepper->setMaxSpeed(motorConfig.maxSpeed);
-   stepper->setAcceleration(motorConfig.acceleration);
-   stepper->setCurrentPosition(0);
+    calculateSteps();
+    stepper->setMaxSpeed(isTMC2209Driver ? DEFAULT_MAX_SPEED_NEMA : DEFAULT_MAX_SPEED_BYJ);
+    stepper->setAcceleration(isTMC2209Driver ? DEFAULT_ACCELERATION_NEMA : DEFAULT_ACCELERATION_BYJ);
+    stepper->setCurrentPosition(0);
+    Serial.println(isTMC2209Driver ? "TMC2209 motor initialized" : "ULN2003 motor initialized");
 }
 
 void StepperDriver::runOscillation() {
-   if (stepper->distanceToGo() == 0) {
-       Serial.println("Reversing direction");
-       delay(2000);  // Pause at endpoints
-       
-       int targetPosition = movingClockwise ? stepsForHalfSwing : -stepsForHalfSwing;
-       stepper->moveTo(targetPosition);
-       movingClockwise = !movingClockwise;
-   }
-   
-   stepper->run();
+    if (stepper->distanceToGo() == 0) {
+        Serial.println("Reversing direction");
+        unsigned long currentMillis = millis();
+        static unsigned long lastPauseTime = 0;
+        if (currentMillis - lastPauseTime >= 2000) {  // Non-blocking pause of 2 seconds
+            int targetPosition = movingClockwise ? stepsForHalfSwing : -stepsForHalfSwing;
+            stepper->moveTo(targetPosition);
+            movingClockwise = !movingClockwise;
+            lastPauseTime = currentMillis;
+        }
+    }
+    stepper->run();
 }
 
 void StepperDriver::stopMotion() {
-   stepper->stop();
-   stepper->setCurrentPosition(stepper->currentPosition());  // Prevents further movement
+    if (stepper) {
+        stepper->stop();
+        stepper->setCurrentPosition(stepper->currentPosition());  // Prevent further movement
+        Serial.println("Motion stopped.");
+    }
 }
 
 float StepperDriver::getCurrentPosition() {
-   return stepper->currentPosition();
+    return stepper ? stepper->currentPosition() : 0;
 }
 
 float StepperDriver::getTargetPosition() {
-   return stepper->targetPosition();
+    return stepper ? stepper->targetPosition() : 0;
 }
 
 bool StepperDriver::isMoving() {
-   return stepper->isRunning();
+    return stepper && stepper->isRunning();
+}
+
+void StepperDriver::calculateSteps() {
+    int stepsPerRevolution = isTMC2209Driver ? 200 * 16 : 2048;  // Microstepping for TMC2209 vs ULN2003 step count
+    stepsForHalfSwing = (stepsPerRevolution * (44.0 / 360.0));  // 44-degree arc
+    Serial.print("Steps for half swing: ");
+    Serial.println(stepsForHalfSwing);
+}
+
+void StepperDriver::setupTMC2209() {
+    pinMode(tmcPinConfig.enablePin, OUTPUT);
+    digitalWrite(tmcPinConfig.enablePin, LOW);  // Enable driver (active low)
+    pinMode(tmcPinConfig.ms1Pin, OUTPUT);
+    pinMode(tmcPinConfig.ms2Pin, OUTPUT);
+    digitalWrite(tmcPinConfig.ms1Pin, HIGH);  // 16x microstepping
+    digitalWrite(tmcPinConfig.ms2Pin, HIGH);
+    Serial.println("TMC2209 driver configured.");
+}
+
+void StepperDriver::setupULN2003() {
+    Serial.println("ULN2003 driver configured.");
+    // No special enable pins for ULN2003—AccelStepper handles step sequences.
+}
+
+void StepperDriver::configureDriver() {
+    stepper->setMaxSpeed(isTMC2209Driver ? DEFAULT_MAX_SPEED_NEMA : DEFAULT_MAX_SPEED_BYJ);
+    stepper->setAcceleration(isTMC2209Driver ? DEFAULT_ACCELERATION_NEMA : DEFAULT_ACCELERATION_BYJ);
 }
