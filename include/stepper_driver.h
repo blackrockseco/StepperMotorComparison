@@ -7,33 +7,26 @@
 
 class StepperDriver {
 public:
-   // Constructor takes both motor and pin configurations plus driver type
-   StepperDriver(const TMC2209PinConfig& tmcPins, const ULN2003PinConfig& ulnPins, bool isTMC2209);
+   StepperDriver(const TMC2209PinConfig& tmcPins, bool isTMC2209);
+   StepperDriver(const ULN2003PinConfig& ulnPins, bool isTMC2209);
 
-   // Core functions
-   void setup();                 // Initialize the stepper motor and driver
-   void runOscillation();         // Execute the oscillating motion
-   void stopMotion();             // Emergency stop function
-
-   // Configuration getters
-   float getCurrentPosition();    // Get current position in steps
-   float getTargetPosition();     // Get target position in steps
-   bool isMoving();               // Check if motor is currently moving
+   void setup();
+   void runOscillation();
+   void stopMotion();
+   float getCurrentPosition();
+   float getTargetPosition();
+   bool isMoving();
 
 private:
-   // Hardware objects/configurations
    AccelStepper* stepper;
-   const TMC2209PinConfig& tmcPinConfig;
-   const ULN2003PinConfig& ulnPinConfig;
-   const bool isTMC2209Driver;
-
-   // Motion state
+   const TMC2209PinConfig* tmcPinConfig;
+   const ULN2003PinConfig* ulnPinConfig;
+   bool isTMC2209Driver;
    bool movingClockwise;
    int stepsForHalfSwing;
 
-   // Private helper functions
-   void calculateSteps();         // Calculate steps for the swing motion
-   void setupTMC2209();           // Configure TMC2209 specific settings
-   void setupULN2003();           // Configure ULN2003 specific settings
-   void configureDriver();        // Set up driver parameters
+   void calculateSteps();
+   void setupTMC2209();
+   void setupULN2003();
+   void configureDriver();
 };

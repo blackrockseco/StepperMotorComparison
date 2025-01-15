@@ -4,19 +4,12 @@
 
 void StepperDriver::setup() {
     if (isTMC2209Driver) {
-        stepper = new AccelStepper(AccelStepper::DRIVER, tmcPinConfig.stepPin, tmcPinConfig.dirPin);
+        stepper = new AccelStepper(AccelStepper::DRIVER, tmcPinConfig->stepPin, tmcPinConfig->dirPin);
         setupTMC2209();
     } else {
-        stepper = new AccelStepper(AccelStepper::FULL4WIRE, ulnPinConfig.in1Pin, ulnPinConfig.in3Pin, ulnPinConfig.in2Pin, ulnPinConfig.in4Pin);
+        stepper = new AccelStepper(AccelStepper::FULL4WIRE, ulnPinConfig->in1Pin, ulnPinConfig->in3Pin, ulnPinConfig->in2Pin, ulnPinConfig->in4Pin);
         setupULN2003();
     }
-    calculateSteps();
-    stepper->setMaxSpeed(isTMC2209Driver ? DEFAULT_MAX_SPEED_NEMA : DEFAULT_MAX_SPEED_BYJ);
-    stepper->setAcceleration(isTMC2209Driver ? DEFAULT_ACCELERATION_NEMA : DEFAULT_ACCELERATION_BYJ);
-    stepper->setCurrentPosition(0);
-    Serial.println(isTMC2209Driver ? \"TMC2209 motor initialized\" : \"ULN2003 motor initialized\");
-}
-
 
     calculateSteps();
     stepper->setMaxSpeed(isTMC2209Driver ? DEFAULT_MAX_SPEED_NEMA : DEFAULT_MAX_SPEED_BYJ);
@@ -25,20 +18,6 @@ void StepperDriver::setup() {
     Serial.println(isTMC2209Driver ? "TMC2209 motor initialized" : "ULN2003 motor initialized");
 }
 
-void StepperDriver::runOscillation() {
-    if (stepper->distanceToGo() == 0) {
-        Serial.println("Reversing direction");
-        unsigned long currentMillis = millis();
-        static unsigned long lastPauseTime = 0;
-        if (currentMillis - lastPauseTime >= 2000) {  // Non-blocking pause of 2 seconds
-            int targetPosition = movingClockwise ? stepsForHalfSwing : -stepsForHalfSwing;
-            stepper->moveTo(targetPosition);
-            movingClockwise = !movingClockwise;
-            lastPauseTime = currentMillis;
-        }
-    }
-    stepper->run();
-}
 
 void StepperDriver::stopMotion() {
     if (stepper) {

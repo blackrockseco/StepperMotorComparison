@@ -1,12 +1,26 @@
 // src/main.cpp
 #include "board_config.h"
-#include "motor_config.h"
 #include "stepper_driver.h"
 #include "wifi_config.h"
 
-// Global instances for motors
-TMC2209PinConfig tmc2209Pins;
-ULN2003PinConfig uln2003Pins;
+#include "pin_config.h"
+#include "motor_config.h"
+
+// Create instances of pin configurations
+TMC2209PinConfig tmc2209PinConfig(
+    TMC2209_STEP_PIN,
+    TMC2209_DIR_PIN,
+    TMC2209_ENABLE_PIN,
+    TMC2209_MS1_PIN,
+    TMC2209_MS2_PIN
+);
+
+ULN2003PinConfig uln2003PinConfig(
+    ULN2003_IN1_PIN,
+    ULN2003_IN2_PIN,
+    ULN2003_IN3_PIN,
+    ULN2003_IN4_PIN
+);
 StepperDriver stepperDriver1(tmc2209Pins, uln2003Pins, true);  // NEMA 11 + TMC2209
 StepperDriver stepperDriver2(tmc2209Pins, uln2003Pins, false);  // 28BYJ-48 + ULN2003
 
