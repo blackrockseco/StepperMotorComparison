@@ -1,3 +1,4 @@
+#include "board_config.h"
 #include "pin_config.h"
 #include "motor_config.h"
 #include "stepper_driver.h"
