@@ -29,8 +29,8 @@
 #elif defined(ESP32)
     #define ULN2003_IN1_PIN 33
     #define ULN2003_IN2_PIN 32
-    #define ULN2003_IN3_PIN 35
-    #define ULN2003_IN4_PIN 34
+    #define ULN2003_IN3_PIN 25
+    #define ULN2003_IN4_PIN 26
 #else
     #error "Unsupported board type for ULN2003 pins"
 #endif
